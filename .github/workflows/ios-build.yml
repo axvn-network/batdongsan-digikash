@@ -1,4 +1,4 @@
-name: Build iOS IPA (Unsigned - Install via Sideloadly / AltStore)
+name: Build iOS IPA & InstallOnAir OTA
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: Build Unsigned iOS IPA
-    runs-on: macos-14
+    runs-on: macos-latest
 
     steps:
       - name: Checkout Source Code
@@ -21,19 +21,14 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
-
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: npm install --legacy-peer-deps
 
       - name: Generate Prisma Client
         run: npx prisma generate
 
       - name: Build Next.js Static Export for Mobile
-        run: pnpm run build:mobile
+        run: npm run build:mobile
 
       - name: Sync Capacitor iOS Project
         run: |
@@ -52,7 +47,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=""
 
-      - name: Package .xcarchive into .ipa using xtool standards
+      - name: Package .xcarchive into .ipa
         run: |
           mkdir -p Payload
           cp -r ios/App/App.xcarchive/Products/Applications/App.app Payload/
@@ -65,3 +60,12 @@ jobs:
           name: batdongsan-digikash-unsigned-ipa
           path: BatdongsanDigiKash-unsigned.ipa
           retention-days: 14
+
+      - name: Instructions for InstallOnAir OTA
+        run: |
+          echo "================================================================"
+          echo "HƯỚNG DẪN CÀI ĐẶT TỪ XA QUA INSTALLONAIR (KHÔNG CẦN CÁP/MAC):"
+          echo "1. Tải file BatdongsanDigiKash-unsigned.ipa từ mục Artifacts bên trên."
+          echo "2. Truy cập https://www.installonair.com và kéo thả file IPA vào."
+          echo "3. Lấy link hoặc mã QR quét trực tiếp bằng Safari trên iPhone để cài đặt!"
+          echo "================================================================"
