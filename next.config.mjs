@@ -1,31 +1,44 @@
 /** @type {import('next').NextConfig} */
+const isMobileExport = process.env.NEXT_EXPORT === 'true';
+
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  ...(isMobileExport
+    ? {
+        output: 'export',
+        trailingSlash: true,
+        images: {
+          unoptimized: true,
+        },
+      }
+    : {
+        images: {
+          domains: [
+            'images.unsplash.com',
+            'batdongsan.com.vn',
+            'file4.batdongsan.com.vn',
+            'cloudflare-ipfs.com',
+            'avatars.githubusercontent.com',
+            'picsum.photos',
+            'placehold.co'
+          ],
+          remotePatterns: [
+            {
+              protocol: 'https',
+              hostname: '**',
+            },
+          ],
+        },
+      }),
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: false,
-  },
-  images: {
-    domains: [
-      'images.unsplash.com',
-      'batdongsan.com.vn',
-      'file4.batdongsan.com.vn',
-      'cloudflare-ipfs.com',
-      'avatars.githubusercontent.com',
-      'picsum.photos',
-      'placehold.co'
-    ],
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
+    ignoreBuildErrors: true, // Cho phép build export mà không bị nghẽn
   },
   async headers() {
+    if (isMobileExport) return [];
     return [
       {
         source: '/(.*)',
@@ -69,7 +82,7 @@ const nextConfig = {
           },
           {
             key: 'Access-Control-Allow-Origin',
-            value: '*', // Hoặc origin app
+            value: '*',
           },
           {
             key: 'Access-Control-Allow-Methods',

@@ -25,10 +25,9 @@ jobs:
         uses: pnpm/action-setup@v3
         with:
           version: 9
-          run_install: false
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -36,12 +35,12 @@ jobs:
       - name: Build Next.js Static Export for Mobile
         run: pnpm run build:mobile
         env:
-          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || 'https://batdongsan.com.vn' }}
+          NEXT_EXPORT: 'true'
           NEXT_PUBLIC_IS_MOBILE_APP: 'true'
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://neondb_owner:npg_BZVdz7cf3gpP@ep-rough-night-beb7hp8y-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require' }}
 
       - name: Sync Capacitor iOS Project
         run: |
-          npx cap add ios || true
           npx cap sync ios
 
       - name: Build Unsigned App Archive
