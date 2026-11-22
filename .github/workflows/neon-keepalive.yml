@@ -1,0 +1,19 @@
+name: Neon PostgreSQL Keep-Alive Ping
+
+on:
+  schedule:
+    # Chạy mỗi 5 phút một lần để ngăn Neon Serverless / Supabase sleep sau thời gian nhàn rỗi
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    name: Ping Database & Healthcheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Production URL
+        run: |
+          TARGET_URL="${{ secrets.PRODUCTION_HEALTH_URL || 'https://batdongsan.com.vn/api/health' }}"
+          echo "Pinging $TARGET_URL to keep server and database active..."
+          curl -s -f -o /dev/null -w "%{http_code}\n" "$TARGET_URL" || echo "Ping dispatched."

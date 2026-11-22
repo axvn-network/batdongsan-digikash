@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Batdongsan DigiKash</string>
+    <string name="title_activity_main">Batdongsan DigiKash</string>
+    <string name="package_name">vn.digikash.bds</string>
+    <string name="custom_url_scheme">vn.digikash.bds</string>
+</resources>

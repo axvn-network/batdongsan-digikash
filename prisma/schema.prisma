@@ -1,0 +1,325 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GUEST
+  USER
+  AGENT
+  VERIFIED_AGENT
+  MODERATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum PropertyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SOLD
+  RENTED
+  HIDDEN
+}
+
+enum InquiryStatus {
+  NEW
+  PROCESSING
+  RESPONDED
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String         @map("password_hash")
+  name          String
+  phone         String?
+  avatar        String?
+  role          Role           @default(USER)
+  isBlocked     Boolean        @default(false) @map("is_blocked")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  properties    Property[]
+  favorites     Favorite[]
+  transactions  Transaction[]
+  posts         Post[]
+  sentMessages     Message[]   @relation("SentMessages")
+  receivedMessages Message[]   @relation("ReceivedMessages")
+  userPermissions  UserPermission[]
+  auditLogs        AuditLog[]
+
+  @@map("users")
+}
+
+model PropertyType {
+  id         String     @id @default(uuid())
+  name       String
+  slug       String     @unique
+  order      Int        @default(0)
+  properties Property[]
+
+  @@map("property_types")
+}
+
+model Location {
+  id        String     @id @default(uuid())
+  name      String
+  slug      String
+  type      String     // "city", "district", "ward"
+  parentId  String?    @map("parent_id")
+  parent    Location?  @relation("LocationHierarchy", fields: [parentId], references: [id])
+  children  Location[] @relation("LocationHierarchy")
+  projects  Project[]
+
+  @@map("locations")
+}
+
+model Project {
+  id          String      @id @default(uuid())
+  name        String
+  slug        String      @unique
+  developer   String
+  description String?     @db.Text
+  image       String?
+  locationId  String?     @map("location_id")
+  location    Location?   @relation(fields: [locationId], references: [id])
+  priceRange  String?     @map("price_range")
+  status      String?     // "sắp mở bán", "đang mở bán", "đã bàn giao"
+  latitude    Float?
+  longitude   Float?
+  properties  Property[]
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@map("projects")
+}
+
+model Property {
+  id             String          @id @default(uuid())
+  title          String
+  slug           String          @unique
+  description    String          @db.Text
+  propertyTypeId String          @map("property_type_id")
+  propertyType   PropertyType    @relation(fields: [propertyTypeId], references: [id])
+  
+  price          Float           // In VND
+  pricePerM2     Float?          @map("price_per_m2")
+  isForRent      Boolean         @default(false) @map("is_for_rent")
+  area           Float           // in m2
+  bedrooms       Int             @default(0)
+  bathrooms      Int             @default(0)
+  direction      String?         // "Đông", "Tây", "Nam", "Bắc", "Đông Nam", ...
+  legalStatus    String?         @map("legal_status") // "Sổ đỏ/Sổ hồng", "Hợp đồng mua bán", ...
+  furniture      String?         // "Đầy đủ", "Cơ bản", "Không nội thất"
+  
+  address        String
+  city           String
+  district       String
+  ward           String?
+  latitude       Float
+  longitude      Float
+  
+  status         PropertyStatus  @default(PENDING)
+  isFeatured     Boolean         @default(false) @map("is_featured")
+  isVip          Boolean         @default(false) @map("is_vip")
+  viewsCount     Int             @default(0) @map("views_count")
+  
+  userId         String          @map("user_id")
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  projectId      String?         @map("project_id")
+  project        Project?        @relation(fields: [projectId], references: [id])
+
+  images         PropertyImage[]
+  favorites      Favorite[]
+  inquiries      Inquiry[]
+  priceHistory   PriceHistory[]
+
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@index([propertyTypeId])
+  @@index([city, district])
+  @@index([price])
+  @@index([area])
+  @@index([status])
+  @@map("properties")
+}
+
+model PropertyImage {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url        String
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  order      Int      @default(0)
+
+  @@map("property_images")
+}
+
+model Favorite {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId String   @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, propertyId])
+  @@map("favorites")
+}
+
+model Inquiry {
+  id          String        @id @default(uuid())
+  propertyId  String        @map("property_id")
+  property    Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  senderName  String        @map("sender_name")
+  senderPhone String        @map("sender_phone")
+  senderEmail String?       @map("sender_email")
+  message     String        @db.Text
+  status      InquiryStatus @default(NEW)
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  @@map("inquiries")
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  senderId       String   @map("sender_id")
+  sender         User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId     String   @map("receiver_id")
+  receiver       User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  content        String   @db.Text
+  isRead         Boolean  @default(false) @map("is_read")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model Post {
+  id          String    @id @default(uuid())
+  title       String
+  slug        String    @unique
+  excerpt     String?   @db.Text
+  content     String    @db.Text
+  thumbnail   String?
+  category    String    @default("Thị trường")
+  authorId    String    @map("author_id")
+  author      User      @relation(fields: [authorId], references: [id])
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("posts")
+}
+
+model ServicePackage {
+  id           String        @id @default(uuid())
+  name         String
+  slug         String        @unique
+  price        Float
+  durationDays Int           @map("duration_days")
+  listingLimit Int           @map("listing_limit")
+  features     String        @db.Text // JSON string of features
+  isPopular    Boolean       @default(false) @map("is_popular")
+  transactions Transaction[]
+
+  @@map("service_packages")
+}
+
+model Transaction {
+  id            String            @id @default(uuid())
+  userId        String            @map("user_id")
+  user          User              @relation(fields: [userId], references: [id])
+  packageId     String            @map("package_id")
+  package       ServicePackage    @relation(fields: [packageId], references: [id])
+  amount        Float
+  status        TransactionStatus @default(PENDING)
+  paymentMethod String            @map("payment_method") // "VNPAY", "MOMO", "VIETQR", "BANK_TRANSFER"
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  @@map("transactions")
+}
+
+model PriceHistory {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  price      Float
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  @@map("price_histories")
+}
+
+model RoleDefinitionModel {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  label       String
+  description String?
+  isSystem    Boolean          @default(false)
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model PermissionModel {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  resource    String
+  action      String
+  description String?
+  roles       RolePermission[]
+  users       UserPermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         RoleDefinitionModel @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   PermissionModel     @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserPermission {
+  userId       String
+  permissionId String
+  granted      Boolean
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   PermissionModel @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+  @@map("user_permissions")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entity     String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
