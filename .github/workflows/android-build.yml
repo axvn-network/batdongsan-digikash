@@ -34,10 +34,6 @@ jobs:
 
       - name: Build Next.js Static Export for Mobile
         run: pnpm run build:mobile
-        env:
-          NEXT_EXPORT: 'true'
-          NEXT_PUBLIC_IS_MOBILE_APP: 'true'
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://neondb_owner:npg_BZVdz7cf3gpP@ep-rough-night-beb7hp8y-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require' }}
 
       - name: Set up Java JDK 17
         uses: actions/setup-java@v4
@@ -51,6 +47,10 @@ jobs:
       - name: Sync Capacitor Android Project
         run: |
           npx cap sync android
+
+      - name: Make Gradlew Executable
+        working-directory: ./android
+        run: chmod +x ./gradlew
 
       - name: Build Debug APK
         working-directory: ./android

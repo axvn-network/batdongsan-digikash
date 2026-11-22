@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: Build Unsigned iOS IPA
-    runs-on: macos-latest
+    runs-on: macos-14
 
     steps:
       - name: Checkout Source Code
@@ -34,10 +34,6 @@ jobs:
 
       - name: Build Next.js Static Export for Mobile
         run: pnpm run build:mobile
-        env:
-          NEXT_EXPORT: 'true'
-          NEXT_PUBLIC_IS_MOBILE_APP: 'true'
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://neondb_owner:npg_BZVdz7cf3gpP@ep-rough-night-beb7hp8y-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require' }}
 
       - name: Sync Capacitor iOS Project
         run: |
@@ -56,7 +52,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=""
 
-      - name: Package .xcarchive into .ipa
+      - name: Package .xcarchive into .ipa using xtool standards
         run: |
           mkdir -p Payload
           cp -r ios/App/App.xcarchive/Products/Applications/App.app Payload/

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
+import { MobileBottomNavigation } from "@/components/layout/mobile-bottom-navigation";
 
 export const metadata: Metadata = {
   title: {
@@ -31,8 +32,9 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased font-sans bg-[#F7F8F9] min-h-screen text-slate-800">
+      <body className="antialiased font-sans bg-[#F7F8F9] min-h-screen text-slate-800 pb-16 md:pb-0">
         {children}
+        <MobileBottomNavigation />
       </body>
     </html>
   );
