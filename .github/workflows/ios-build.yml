@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: Build Unsigned iOS IPA
-    runs-on: macos-latest
+    runs-on: macos-14
 
     steps:
       - name: Checkout Source Code
@@ -32,6 +32,7 @@ jobs:
 
       - name: Sync Capacitor iOS Project
         run: |
+          npx cap add ios || true
           npx cap sync ios
 
       - name: Build Unsigned App Archive
@@ -60,12 +61,3 @@ jobs:
           name: batdongsan-digikash-unsigned-ipa
           path: BatdongsanDigiKash-unsigned.ipa
           retention-days: 14
-
-      - name: Instructions for InstallOnAir OTA
-        run: |
-          echo "================================================================"
-          echo "HƯỚNG DẪN CÀI ĐẶT TỪ XA QUA INSTALLONAIR (KHÔNG CẦN CÁP/MAC):"
-          echo "1. Tải file BatdongsanDigiKash-unsigned.ipa từ mục Artifacts bên trên."
-          echo "2. Truy cập https://www.installonair.com và kéo thả file IPA vào."
-          echo "3. Lấy link hoặc mã QR quét trực tiếp bằng Safari trên iPhone để cài đặt!"
-          echo "================================================================"
