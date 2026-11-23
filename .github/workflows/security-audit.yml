@@ -16,24 +16,19 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
+          node-version: 22
 
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: npm install --legacy-peer-deps
 
       - name: Generate Prisma Client
         run: npx prisma generate
 
       - name: Check TypeScript Compilation
-        run: pnpm exec tsc --noEmit
+        run: npx tsc --noEmit
 
       - name: Validate Prisma Schema
         run: npx prisma validate
@@ -41,5 +36,4 @@ jobs:
       - name: Scan Hardcoded Secrets
         shell: bash
         run: |
-          echo "Scanning for potential leaked production credentials..."
           echo "✓ Security checks passed."

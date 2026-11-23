@@ -16,10 +16,10 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
@@ -32,7 +32,6 @@ jobs:
 
       - name: Sync Capacitor iOS Project
         run: |
-          npx cap add ios || true
           npx cap sync ios
 
       - name: Build Unsigned App Archive
