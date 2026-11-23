@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build Unsigned iOS IPA
+    name: Build & Sign iOS IPA
     runs-on: macos-latest
 
     steps:
@@ -34,7 +34,67 @@ jobs:
         run: |
           npx cap sync ios
 
-      - name: Build Unsigned App Archive
+      # -------------------------------------------------------------
+      # BƯỚC CÀI ĐẶT CHỨNG CHỈ (NẾU CÓ CẤU HÌNH GITHUB SECRETS)
+      # -------------------------------------------------------------
+      - name: Install Apple Certificate and Provisioning Profile
+        if: ${{ env.BUILD_CERTIFICATE_BASE64 != '' }}
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'temporary_keychain_password_123' }}
+        run: |
+          # 1. Tạo keychain tạm thời
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # 2. Giải mã và import file .p12 certificate
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # 3. Giải mã file Provisioning Profile
+          PP_PATH=$RUNNER_TEMP/build_profile.mobileprovision
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      # -------------------------------------------------------------
+      # TRƯỜNG HỢP 1: CÓ KÝ CHỨNG CHỈ (SIGNED IPA)
+      # -------------------------------------------------------------
+      - name: Build and Export Signed IPA
+        if: ${{ env.BUILD_CERTIFICATE_BASE64 != '' }}
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+        working-directory: ./ios/App
+        run: |
+          # Archive dự án
+          xcodebuild -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath App.xcarchive \
+            archive
+
+          # Export IPA đã ký
+          xcodebuild -exportArchive \
+            -archivePath App.xcarchive \
+            -exportOptionsPlist exportOptions.plist \
+            -exportPath output
+
+          cp output/*.ipa ../../BatdongsanDigiKash-signed.ipa
+
+      # -------------------------------------------------------------
+      # TRƯỜNG HỢP 2: DỰ PHÒNG CHƯA CÓ SECRET (UNSIGNED IPA)
+      # -------------------------------------------------------------
+      - name: Build Unsigned App Archive Fallback
+        if: ${{ env.BUILD_CERTIFICATE_BASE64 == '' }}
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
         working-directory: ./ios/App
         run: |
           xcodebuild -project App.xcodeproj \
@@ -47,16 +107,15 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=""
 
-      - name: Package .xcarchive into .ipa
-        run: |
           mkdir -p Payload
-          cp -r ios/App/App.xcarchive/Products/Applications/App.app Payload/
-          zip -r BatdongsanDigiKash-unsigned.ipa Payload
+          cp -r App.xcarchive/Products/Applications/App.app Payload/
+          zip -r ../../BatdongsanDigiKash-unsigned.ipa Payload
           rm -rf Payload
 
-      - name: Upload Unsigned IPA Artifact
+      # Upload Artifact IPA
+      - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: batdongsan-digikash-unsigned-ipa
-          path: BatdongsanDigiKash-unsigned.ipa
+          name: batdongsan-digikash-ipa
+          path: BatdongsanDigiKash-*.ipa
           retention-days: 14
