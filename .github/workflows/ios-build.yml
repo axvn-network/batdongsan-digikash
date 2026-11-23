@@ -37,7 +37,7 @@ jobs:
       - name: Build Unsigned App Archive
         working-directory: ./ios/App
         run: |
-          xcodebuild -workspace App.xcworkspace \
+          xcodebuild -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -destination 'generic/platform=iOS' \
